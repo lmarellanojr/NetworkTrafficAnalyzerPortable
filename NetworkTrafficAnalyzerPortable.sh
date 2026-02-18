@@ -58,8 +58,18 @@ echo ""
 if [ "$(id -u)" -ne 0 ]; then
     echo "Elevating to root for raw socket access..."
 
+    # Resolve XAUTHORITY if not set (common when launched from .desktop file)
+    if [ -z "$XAUTHORITY" ]; then
+        if [ -f "$HOME/.Xauthority" ]; then
+            XAUTHORITY="$HOME/.Xauthority"
+        else
+            XAUTHORITY=$(ls /run/user/"$(id -u)"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
+        fi
+    fi
+
     # Try pkexec first (graphical password prompt, like Windows UAC)
     if command -v pkexec &>/dev/null && [ -n "$DISPLAY" ]; then
+        xhost +SI:localuser:root 2>/dev/null || true
         pkexec env DISPLAY="$DISPLAY" XAUTHORITY="$XAUTHORITY" $TARGET "$@"
     else
         # Fall back to sudo in terminal
